@@ -22,13 +22,18 @@
   #tub.here #glow { opacity: 1; }
   #result { position: fixed; inset: 0; z-index: 40; display: none; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; padding: 24px; background: rgba(5,20,30,.72); backdrop-filter: blur(3px); }
-  #result h1 { font-size: 15vmin; margin: 0; line-height: 1.05; }
+  #result h1 { font-size: 14vmin; word-break: keep-all; margin: 0; line-height: 1.05; }
   #result p { font-size: 20px; margin: 12px 0 0; }
   #result.win h1 { color: var(--accent); text-shadow: 0 0 30px rgba(255,211,77,.7); animation: pop .6s cubic-bezier(.2,2,.4,1); }
   #result.win { background: rgba(5,20,30,.3); backdrop-filter: none; justify-content: flex-start; padding-top: 12vh; }
   #result.lose h1 { color: #d6e6ef; }
   @keyframes pop { from { transform: scale(.2); } to { transform: scale(1); } }
   #err { display: none; position: fixed; inset: 0; z-index: 60; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 20px; background: var(--bg); }
+  #snd { position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: max(22px, env(safe-area-inset-bottom)); background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.4); font-size: 17px; padding: 12px 20px; border-radius: 999px; }
+  #snd.on { background: rgba(0,0,0,.45); color: #fff; font-size: 15px; padding: 8px 14px; }
+  #tub.sit { animation: tubsit .5s ease-in-out infinite alternate; }
+  @keyframes tubsit { from { border-color: var(--tub, #3BA7E0); } to { border-color: var(--accent); } }
   #count { position: absolute; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; font-size: 40vmin; font-weight: 900; color: #fff; text-shadow: 0 6px 20px rgba(0,0,0,.4); }
 </style>
 </head>
@@ -45,11 +50,13 @@
     <div id="beetle"></div>
   </div>
 </div>
+<button id="snd">🔊 눌러서 소리 켜기</button>
 <div id="result"><h1 id="r-title"></h1><p id="r-sub"></p></div>
 <div id="err"></div>
 <script src="beetle.js"></script>
 <script src="mqtt.min.js"></script>
 <script src="net.js"></script>
+<script src="sound.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -129,19 +136,37 @@ function handle(m) {
   } else if (!joined) {
     return;
   } else if (m.type === 'countdown') {
-    hideResult(); hideBeetle(); countdown(Math.round(m.ms / 1000));
+    hideResult(); hideBeetle(); clearHolds(); countdown(Math.round(m.ms / 1000));
   } else if (m.type === 'hop') {
-    $('sub').textContent = `지금 ${nums[m.id] ?? '?'}번 통에 있어요`;
-    if (m.id === me.pid) { m.final ? settle(m.dur) : cross(m.dur); }
-    else if (!m.final) { $('tub').classList.remove('here'); }
+    clearHolds();
+    const where = nums[m.id] ?? '?', mine = m.id === me.pid;
+    $('sub').textContent = `지금 ${where}번 통에 있어요`;
+    SFX.setIntensity(m.idx / Math.max(1, m.total - 1));
+    if (mine) { (m.final || m.fake) ? settle(m.dur, m.fake) : cross(m.dur); SFX.splash(); }
+    else { $('tub').classList.remove('here', 'sit'); }
+    if (m.fake || m.final) {
+      holdTimers.push(setTimeout(() => {
+        SFX.hold();
+        $('status').textContent = mine ? '어…? 내 통에 멈췄다?! 😳' : `${where}번 통에 멈췄다…?!`;
+        if (mine) { $('tub').classList.add('sit'); SFX.heartbeat(2); buzz([60, 160, 60]); }
+      }, 1000));
+      if (m.fake) holdTimers.push(setTimeout(() => {
+        SFX.resume(); SFX.whoosh(); $('tub').classList.remove('sit');
+        $('status').textContent = mine ? '앗! 다시 나가 버렸다 😱' : '앗, 다시 움직인다!';
+      }, 2400));
+      else holdTimers.push(setTimeout(() => SFX.drumroll(1.1), 2400));
+    } else $('status').textContent = '물방개가 통들을 돌아다니는 중…';
   } else if (m.type === 'winner') {
+    clearHolds(); SFX.stopMusic();
     showResult(m.id);
   }
 }
+let holdTimers = [];
+function clearHolds() { holdTimers.forEach(clearTimeout); holdTimers = []; }
 
 function countdown(n) {
   const c = $('count'); c.style.display = 'flex';
-  const tick = () => { if (n <= 0) { c.style.display = 'none'; return; } c.textContent = n--; setTimeout(tick, 1000); };
+  const tick = () => { if (n <= 0) { c.style.display = 'none'; SFX.startMusic(); return; } SFX.tick(); c.textContent = n--; setTimeout(tick, 1000); };
   tick();
 }
 
@@ -174,23 +199,40 @@ function cross(dur) {
   anim.onfinish = () => { $('tub').classList.remove('here'); beetle.style.display = 'none'; };
 }
 
-function settle(dur) {
+// 들어와서 멈춘다 → (fake면) 1.4초 뒤 다시 튀어나감 / (진짜면) 한 번 꿈틀하고 자리 잡음
+function settle(dur, fake) {
   beetle.style.display = 'block';
   const b = box();
   const t = Math.random() * Math.PI * 2;
   const [x1, y1] = edgePoint(t, b);
   const cx = b.w / 2 - b.bw / 2, cy = b.h / 2 - b.bh / 2 - b.h * .06;
   const a = ang(x1, y1, cx, cy);
+  const at = ms => Math.min(1, ms / dur);
   if (anim) anim.cancel();
   beetle.classList.add('swim');
   $('tub').classList.add('here');
   buzz([80, 60, 80]);
-  anim = beetle.animate([
-    { transform: tf(x1, y1, a) },
-    { transform: tf(cx + b.w * .12, cy - b.h * .05, a + 30), offset: .55 },
-    { transform: tf(cx - b.w * .06, cy + b.h * .03, a - 40), offset: .8 },
-    { transform: tf(cx, cy, 0, 1.25) }
-  ], { duration: dur, easing: 'ease-out', fill: 'forwards' });
+  const frames = [
+    { transform: tf(x1, y1, a), offset: 0 },
+    { transform: tf(cx + b.w * .1, cy - b.h * .04, a + 25), offset: at(600), easing: 'ease-out' },
+    { transform: tf(cx, cy, 0, 1.15), offset: at(1000) },
+    { transform: tf(cx, cy, -6, 1.18), offset: at(1500) },
+    { transform: tf(cx, cy, 6, 1.18), offset: at(2000) },
+    { transform: tf(cx, cy, 0, 1.18), offset: at(2400) }
+  ];
+  if (fake) {
+    const [x3, y3] = edgePoint(Math.random() * Math.PI * 2, b);
+    frames.push({ transform: tf(cx, cy, ang(cx, cy, x3, y3) - 20, 1.1), offset: at(2550), easing: 'ease-in' });
+    frames.push({ transform: tf(x3, y3, ang(cx, cy, x3, y3)), offset: 1 });
+  } else {
+    frames.push({ transform: tf(cx + b.w * .05, cy, 25, 1.1), offset: at(2600) });
+    frames.push({ transform: tf(cx - b.w * .05, cy, -25, 1.1), offset: at(2800) });
+    frames.push({ transform: tf(cx, cy, 0, 1.3), offset: 1 });
+  }
+  anim = beetle.animate(frames, { duration: dur, fill: 'forwards' });
+  setTimeout(() => beetle.classList.remove('swim'), 1000);
+  setTimeout(() => beetle.classList.add('swim'), 2400);
+  if (fake) anim.onfinish = () => { $('tub').classList.remove('here', 'sit'); beetle.style.display = 'none'; };
 }
 
 function hideBeetle() { if (anim) anim.cancel(); anim = null; beetle.style.display = 'none'; beetle.classList.remove('swim'); $('tub').classList.remove('here'); }
@@ -199,12 +241,13 @@ function showResult(wid) {
   const r = $('result');
   const win = wid === me.pid;
   r.className = win ? 'win' : 'lose';
-  $('r-title').textContent = win ? '🎉 당첨! 🎉' : '꽝!';
+  $('r-title').textContent = win ? '당신이 당첨!' : '꽝!';
   $('r-sub').textContent = win ? '물방개가 내 통에 쏙 들어왔어요!' : `물방개는 ${nums[wid] ?? '?'}번 통으로 갔어요`;
   r.style.display = 'flex';
   $('status').textContent = win ? '당첨됐어요!' : '다음 판을 기다려요';
-  if (win) { beetle.classList.remove('swim'); buzz([200, 100, 200, 100, 400]); confetti(); }
-  else hideBeetle();
+  $('tub').classList.remove('sit');
+  if (win) { beetle.classList.remove('swim'); buzz([200, 100, 200, 100, 400]); confetti(); SFX.fanfare(); setTimeout(() => SFX.speak('당신이 당첨!'), 900); }
+  else { hideBeetle(); SFX.fail(); }
 }
 function confetti() {
   const cs = ['#ffd34d', '#ff6b6b', '#6be38f', '#56ccf2', '#bb6bd9', '#fff'];
@@ -220,6 +263,9 @@ async function wake() { try { await navigator.wakeLock.request('screen'); } catc
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
 document.addEventListener('click', wake, { once: true });
 wake();
+function sndLabel() { const b = $('snd'); if (SFX.isMuted()) { b.className = 'on'; b.textContent = '🔇 소리 꺼짐'; } else if (SFX.state() === 'running') { b.className = 'on'; b.textContent = '🔊 소리 켜짐'; } else { b.className = ''; b.textContent = '🔊 눌러서 소리 켜기'; } }
+document.addEventListener('pointerdown', e => { if (e.target.id !== 'snd') { SFX.unlock(); setTimeout(sndLabel, 200); } }, { capture: true });
+$('snd').onclick = () => { if (SFX.state() !== 'running') { SFX.unlock(); SFX.setMuted(false); } else SFX.setMuted(!SFX.isMuted()); setTimeout(sndLabel, 200); };
 start();
 </script>
 </body>

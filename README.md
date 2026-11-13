@@ -13,7 +13,7 @@
 
 ## 파일
 - `index.html` 호스트 화면 · `join.html` 참가자 화면 · `net.js` 실시간 연결
-- `beetle.js` 물방개 그림 · `style.css`
+- `beetle.js` 물방개 그림 · `sound.js` 배경음악·효과음(브라우저에서 직접 합성) · `style.css`
 - `qrcode.js` (MIT, Kazuhiko Arase) · `mqtt.min.js` (MQTT.js 5.10.1, MIT)
 
 중계 서버는 `net.js`의 `BROKERS` 목록 순서대로 시도합니다(EMQX → HiveMQ → Mosquitto 공개 서버).

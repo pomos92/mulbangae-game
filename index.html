@@ -36,6 +36,8 @@
   .tub.here { transform: scale(1.08); box-shadow: 0 0 0 4px #fff, 0 0 30px rgba(255,255,255,.6); }
   .tub.here .bt { display: flex; }
   .tub.here .n { opacity: .25; }
+  .tub.here.sit { animation: sit .5s ease-in-out infinite alternate; box-shadow: 0 0 0 4px var(--accent), 0 0 40px rgba(255,211,77,.8); }
+  @keyframes sit { from { transform: scale(1.08) rotate(-2deg); } to { transform: scale(1.14) rotate(2deg); } }
   .tub.win { transform: scale(1.12); box-shadow: 0 0 0 6px var(--accent), 0 0 50px rgba(255,211,77,.9); }
   .tub.win .bt { display: flex; }
   .tub.lose { opacity: .35; }
@@ -64,6 +66,7 @@
         <div class="row">
           <button id="reopen" class="btn-sub">참가 다시 받기</button>
           <button id="newgame" class="btn-sub">새 게임</button>
+          <button id="mute" class="btn-sub" style="flex:0 0 56px" title="소리">🔊</button>
         </div>
       </div>
     </div>
@@ -80,6 +83,7 @@
 <script src="beetle.js"></script>
 <script src="mqtt.min.js"></script>
 <script src="net.js"></script>
+<script src="sound.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const COLORS = ['#3BA7E0', '#F2994A', '#6FCF97', '#EB5757', '#BB6BD9', '#F2C94C', '#56CCF2', '#FF8FB1',
@@ -129,26 +133,40 @@ setInterval(() => {
   if (changed) broadcastState();
 }, 3000);
 
+// 물방개 경로: 모든 통을 한 번씩(무작위 순서) 돈 뒤, 몇 번 더 돌아다니고,
+// 1~2번은 어느 통에 들어가 멈춘 척하다가 다시 튀어나온 뒤, 마지막에 당첨 통으로 들어감
+const FAKE_MS = 3000, FINAL_MS = 3600;
 function buildPath() {
   const ids = G.players.map(p => p.id);
   const win = ids[MB.randInt(ids.length)];
-  const hops = ids.slice();
-  for (let i = hops.length - 1; i > 0; i--) { const j = MB.randInt(i + 1); [hops[i], hops[j]] = [hops[j], hops[i]]; }
+  const order = ids.slice();
+  for (let i = order.length - 1; i > 0; i--) { const j = MB.randInt(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+  const hops = order.map(id => ({ id, kind: 'pass' }));
+  if (ids.length === 1) return { hops: [{ id: win, kind: 'final', dur: FINAL_MS }], win };
+  const last = () => hops[hops.length - 1].id;
   const other = not => { let x; do { x = ids[MB.randInt(ids.length)]; } while (x === not); return x; };
-  if (ids.length > 1) {
-    const extra = Math.min(3 + MB.randInt(5), 2 + ids.length * 2);
-    for (let k = 0; k < extra; k++) hops.push(other(hops[hops.length - 1]));
-    if (hops[hops.length - 1] === win) hops.push(other(win));
-    hops.push(win);
-  } else hops.splice(0, hops.length, win);
+  const extra = Math.min(2 + MB.randInt(4), 1 + ids.length * 2);
+  for (let k = 0; k < extra; k++) hops.push({ id: other(last()), kind: 'pass' });
+  const fakes = 1 + MB.randInt(2);
+  for (let f = 0; f < fakes; f++) {
+    hops.push({ id: other(last()), kind: 'fake' });
+    const after = 1 + MB.randInt(2);                // 튀어나와서 재빨리 다른 통으로
+    for (let k = 0; k < after; k++) hops.push({ id: other(last()), kind: 'dash' });
+  }
+  if (last() === win) hops.push({ id: other(win), kind: 'pass' });
+  hops.push({ id: win, kind: 'final' });
   const n = hops.length;
-  const durs = hops.map((_, i) => { const e = n - 1 - i; if (e === 0) return 2600; if (e <= 3) return [0, 1700, 1300, 1000][e]; return Math.max(450, 1300 - i * 120); });
-  return { hops, durs, win };
+  hops.forEach((h, i) => {
+    const e = n - 1 - i;
+    h.dur = h.kind === 'final' ? FINAL_MS : h.kind === 'fake' ? FAKE_MS : h.kind === 'dash' ? 520
+      : e <= 2 ? [0, 1300, 1000][e] : Math.max(450, 1300 - i * 120);
+  });
+  return { hops, win };
 }
 
 function startBeetle() {
   if (!G.players.length || G.phase === 'running') return;
-  const { hops, durs, win } = buildPath();
+  const { hops, win } = buildPath();
   clearTimeout(runTimer);
   G.phase = 'running'; G.winner = null; G.round++;
   const round = G.round;
@@ -164,8 +182,10 @@ function startBeetle() {
       broadcastState();
       return;
     }
-    broadcast({ type: 'hop', id: hops[i], dur: durs[i], idx: i, total: hops.length, final: i === hops.length - 1 });
-    runTimer = setTimeout(step, durs[i++]);
+    const h = hops[i];
+    broadcast({ type: 'hop', id: h.id, dur: h.dur, idx: i, total: hops.length, final: h.kind === 'final', fake: h.kind === 'fake' });
+    runTimer = setTimeout(step, h.dur);
+    i++;
   };
   runTimer = setTimeout(step, 3000);
 }
@@ -257,22 +277,40 @@ function render() {
   grid.querySelectorAll('.tub').forEach(el => { if (!have.has(el.dataset.id)) el.remove(); });
 }
 
+let holdTimers = [];
+function clearHolds() { holdTimers.forEach(clearTimeout); holdTimers = []; }
 function handle(m) {
-  if (m.type === 'state') { state = m; render(); if (m.phase !== 'done') $('banner').style.display = 'none'; }
+  if (m.type === 'state') { state = m; render(); if (m.phase !== 'done') $('banner').style.display = 'none'; if (m.phase !== 'running') { clearHolds(); if (m.phase === 'lobby') SFX.stopMusic(); } }
   else if (m.type === 'countdown') { let n = Math.round(m.ms / 1000); const c = $('count'); c.style.display = 'flex';
-    const t = () => { if (n <= 0) { c.style.display = 'none'; return; } c.textContent = n--; setTimeout(t, 1000); }; t(); }
+    const t = () => { if (n <= 0) { c.style.display = 'none'; SFX.startMusic(); return; } SFX.tick(); c.textContent = n--; setTimeout(t, 1000); }; t(); }
   else if (m.type === 'hop') {
-    document.querySelectorAll('.tub.here').forEach(e => e.classList.remove('here'));
+    clearHolds();
+    document.querySelectorAll('.tub.here').forEach(e => e.classList.remove('here', 'sit'));
     const el = document.querySelector(`.tub[data-id="${m.id}"]`);
     if (el) { el.classList.add('here'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    SFX.setIntensity(m.idx / Math.max(1, m.total - 1));
+    SFX.splash();
+    if (m.fake || m.final) {
+      // 멈춘 척 / 진짜 멈춤은 처음 2.4초 동안 똑같이 보이고 들림
+      holdTimers.push(setTimeout(() => { if (el) el.classList.add('sit'); $('phaseText').textContent = '멈췄다…?!'; SFX.hold(); }, 1000));
+      if (m.fake) holdTimers.push(setTimeout(() => { if (el) el.classList.remove('sit'); $('phaseText').textContent = '앗, 다시 움직인다!'; SFX.whoosh(); SFX.resume(); }, 2400));
+      else holdTimers.push(setTimeout(() => { SFX.drumroll(1.1); }, 2400));
+    } else if ($('phaseText').textContent !== '물방개가 돌아다니는 중…') $('phaseText').textContent = '물방개가 돌아다니는 중…';
   }
   else if (m.type === 'winner') {
-    document.querySelectorAll('.tub.here').forEach(e => e.classList.remove('here'));
-    setTimeout(() => { $('bTitle').textContent = `${m.num}번 통`; $('bSub').textContent = '🎉 당첨! 🎉'; $('banner').style.display = 'flex'; }, 400);
+    clearHolds();
+    SFX.stopMusic();
+    setTimeout(() => {
+      document.querySelectorAll('.tub.here').forEach(e => e.classList.remove('here', 'sit'));
+      $('bTitle').textContent = `${m.num}번 통`; $('bSub').textContent = '🎉 당첨! 🎉'; $('banner').style.display = 'flex';
+      SFX.fanfare(); setTimeout(() => SFX.speak(`${m.num}번 통, 당첨!`), 900);
+    }, 300);
   }
 }
 
 $('start').onclick = () => { if (!G.players.length) return alert('참가자가 없어요.'); host('start'); };
+document.addEventListener('pointerdown', () => SFX.unlock(), { capture: true });
+$('mute').onclick = () => { SFX.unlock(); SFX.setMuted(!SFX.isMuted()); $('mute').textContent = SFX.isMuted() ? '🔇' : '🔊'; };
 $('again').onclick = () => { $('banner').style.display = 'none'; host('start'); };
 $('close').onclick = () => { $('banner').style.display = 'none'; };
 $('reopen').onclick = () => host('reopen');
