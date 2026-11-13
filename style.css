@@ -1,0 +1,33 @@
+:root {
+  --bg: #0b2a3d; --bg2: #0f3a54; --ink: #f4fbff; --muted: #a9c7d8; --accent: #ffd34d; --accent-ink: #2a1e00;
+  --water1: #6fd0f2; --water2: #2a8fc4; --water3: #13628f; --danger: #ff6b6b; --ok: #6be38f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: radial-gradient(1200px 800px at 50% -10%, var(--bg2), var(--bg)); color: var(--ink);
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; cursor: pointer; border: 0; border-radius: 14px; padding: 14px 22px; font-weight: 800; font-size: 18px; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+.btn-main { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 0 #c79a12; }
+.btn-main:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 3px 0 #c79a12; }
+.btn-sub { background: rgba(255,255,255,.12); color: var(--ink); }
+.muted { color: var(--muted); }
+
+/* 물 효과 */
+.water { position: relative; overflow: hidden; background: radial-gradient(circle at 30% 25%, var(--water1), var(--water2) 55%, var(--water3)); }
+.water::before, .water::after { content: ""; position: absolute; inset: -50%; pointer-events: none;
+  background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.10) 0 2px, transparent 3px 26px);
+  animation: ripple 9s linear infinite; }
+.water::after { animation-duration: 13s; animation-direction: reverse; opacity: .6; }
+@keyframes ripple { from { transform: rotate(0) scale(1); } to { transform: rotate(360deg) scale(1.1); } }
+
+.beetle .leg-back-l { transform-origin: 36px 87px; }
+.beetle .leg-back-r { transform-origin: 64px 87px; }
+.swim .beetle .leg-back-l { animation: paddleL .28s ease-in-out infinite alternate; }
+.swim .beetle .leg-back-r { animation: paddleR .28s ease-in-out infinite alternate; }
+@keyframes paddleL { from { transform: rotate(-18deg); } to { transform: rotate(16deg); } }
+@keyframes paddleR { from { transform: rotate(18deg); } to { transform: rotate(-16deg); } }
+
+/* 꽃가루 */
+.confetti { position: fixed; top: -20px; width: 10px; height: 16px; z-index: 50; pointer-events: none; animation: fall linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
