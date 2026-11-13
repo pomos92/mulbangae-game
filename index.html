@@ -29,6 +29,8 @@
     display: flex; align-items: center; justify-content: center; transition: transform .2s; animation: drop .4s cubic-bezier(.2,1.6,.4,1); }
   @keyframes drop { from { transform: scale(.3); opacity: 0; } }
   .tub .n { position: relative; z-index: 2; font-size: 34px; font-weight: 900; color: rgba(255,255,255,.85); text-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  .tub .me { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); z-index: 3; font-size: 13px; font-weight: 800; background: var(--accent); color: var(--accent-ink); padding: 2px 10px; border-radius: 999px; }
+  #hostjoin.on { background: rgba(255,211,77,.18); color: var(--accent); }
   .tub .off { position: absolute; top: 6px; right: 8px; z-index: 3; font-size: 11px; background: rgba(0,0,0,.45); padding: 2px 6px; border-radius: 6px; }
   .tub .x { position: absolute; top: 4px; left: 6px; z-index: 3; background: none; padding: 2px 6px; font-size: 14px; color: rgba(255,255,255,.6); display: none; }
   .lobby .tub:hover .x { display: block; }
@@ -63,6 +65,7 @@
       <div id="warn"></div>
       <div class="controls">
         <button id="start" class="btn-main" disabled>물방개 시작!</button>
+        <button id="hostjoin" class="btn-sub" style="font-size:16px;padding:12px">🙋 나도 참가 중</button>
         <div class="row">
           <button id="reopen" class="btn-sub">참가 다시 받기</button>
           <button id="newgame" class="btn-sub">새 게임</button>
@@ -96,10 +99,23 @@ const T = () => MB.PREFIX + G.room;
 
 function save() { try { localStorage.setItem(HK, JSON.stringify({ ...G, players: G.players.map(p => ({ ...p, seen: 0 })) })); } catch (_) {} }
 function restore() { try { return JSON.parse(localStorage.getItem(HK)); } catch (_) { return null; } }
-function newGame() { return { room: MB.rid(6), phase: 'lobby', players: [], winner: null, round: 0, nextNum: 1 }; }
+function newGame() { return { room: MB.rid(6), phase: 'lobby', players: [], winner: null, round: 0, nextNum: 1, hostPid: 'h' + MB.rid(11), hostPlays: true }; }
+// 호스트도 참가자 중 한 명 (통 하나를 가짐)
+function isMe(id) { return G && id === G.hostPid; }
+function ensureHost() {
+  if (!G.hostPid) G.hostPid = 'h' + MB.rid(11);
+  if (G.hostPlays === undefined) G.hostPlays = true;
+  const has = G.players.some(p => p.id === G.hostPid);
+  if (G.hostPlays && !has && G.phase === 'lobby') {
+    const num = G.nextNum++;
+    G.players.unshift({ id: G.hostPid, num, color: COLORS[(num - 1) % COLORS.length], seen: Date.now() });
+  } else if (!G.hostPlays && has && G.phase === 'lobby') G.players = G.players.filter(p => p.id !== G.hostPid);
+  $('hostjoin').textContent = G.hostPlays ? '🙋 나도 참가 중' : '🙋 나도 참가하기';
+  $('hostjoin').classList.toggle('on', !!G.hostPlays);
+}
 function setWarn(t, bad) { const w = $('warn'); w.style.display = t ? 'block' : 'none'; w.textContent = t || ''; w.style.color = bad ? '#ff9b9b' : ''; }
 
-function online(p) { return Date.now() - (p.seen || 0) < 12000; }
+function online(p) { return isMe(p.id) || Date.now() - (p.seen || 0) < 12000; }
 function snapshot() {
   return { type: 'state', phase: G.phase, winner: G.winner, round: G.round,
     players: G.players.map(p => ({ id: p.id, num: p.num, color: p.color, online: online(p) })) };
@@ -205,6 +221,7 @@ function showQR() {
 async function init(fresh) {
   const saved = fresh ? null : restore();
   G = saved && saved.room ? saved : newGame();
+  ensureHost();
   if (G.phase === 'running') G.phase = G.winner ? 'done' : 'lobby';
   save();
   setWarn('실시간 중계 서버에 연결하는 중…');
@@ -235,7 +252,7 @@ function subscribe() {
 
 const host = async (action, extra) => {
   if (action === 'start') startBeetle();
-  else if (action === 'reopen') { clearTimeout(runTimer); G.round++; G.phase = 'lobby'; G.winner = null; broadcastState(); }
+  else if (action === 'reopen') { clearTimeout(runTimer); G.round++; G.phase = 'lobby'; G.winner = null; ensureHost(); broadcastState(); }
   else if (action === 'kick') {
     const p = G.players.find(x => x.id === extra.pid);
     if (p) { pub('/ev', { type: 'kicked', pid: p.id }); G.players = G.players.filter(x => x !== p); broadcastState(); }
@@ -265,7 +282,7 @@ function render() {
     if (!el) {
       el = document.createElement('div'); el.className = 'tub water'; el.dataset.id = p.id;
       el.style.setProperty('--c', p.color);
-      el.innerHTML = `<button class="x" title="빼기">✕</button><span class="n">${p.num}</span><span class="off">연결 끊김</span><div class="bt">${beetleSVG(48)}</div>`;
+      el.innerHTML = `<button class="x" title="빼기">✕</button><span class="n">${p.num}</span>${isMe(p.id) ? '<span class="me">나</span>' : ''}<span class="off">연결 끊김</span><div class="bt">${beetleSVG(48)}</div>`;
       el.querySelector('.x').onclick = () => { if (confirm(`${p.num}번 통을 뺄까요?`)) host('kick', { pid: p.id }); };
       grid.appendChild(el);
     }
@@ -290,9 +307,10 @@ function handle(m) {
     if (el) { el.classList.add('here'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     SFX.setIntensity(m.idx / Math.max(1, m.total - 1));
     SFX.splash();
+    if (isMe(m.id)) { try { navigator.vibrate && navigator.vibrate(60); } catch (_) {} }
     if (m.fake || m.final) {
       // 멈춘 척 / 진짜 멈춤은 처음 2.4초 동안 똑같이 보이고 들림
-      holdTimers.push(setTimeout(() => { if (el) el.classList.add('sit'); $('phaseText').textContent = '멈췄다…?!'; SFX.hold(); }, 1000));
+      holdTimers.push(setTimeout(() => { if (el) el.classList.add('sit'); $('phaseText').textContent = isMe(m.id) ? '어…? 내 통에 멈췄다?! 😳' : '멈췄다…?!'; SFX.hold(); if (isMe(m.id)) { try { navigator.vibrate && navigator.vibrate([60, 160, 60]); } catch (_) {} } }, 1000));
       if (m.fake) holdTimers.push(setTimeout(() => { if (el) el.classList.remove('sit'); $('phaseText').textContent = '앗, 다시 움직인다!'; SFX.whoosh(); SFX.resume(); }, 2400));
       else holdTimers.push(setTimeout(() => { SFX.drumroll(1.1); }, 2400));
     } else if ($('phaseText').textContent !== '물방개가 돌아다니는 중…') $('phaseText').textContent = '물방개가 돌아다니는 중…';
@@ -302,8 +320,10 @@ function handle(m) {
     SFX.stopMusic();
     setTimeout(() => {
       document.querySelectorAll('.tub.here').forEach(e => e.classList.remove('here', 'sit'));
-      $('bTitle').textContent = `${m.num}번 통`; $('bSub').textContent = '🎉 당첨! 🎉'; $('banner').style.display = 'flex';
-      SFX.fanfare(); setTimeout(() => SFX.speak(`${m.num}번 통, 당첨!`), 900);
+      const mine = isMe(m.id);
+      $('bTitle').textContent = mine ? '당신이 당첨!' : `${m.num}번 통`; $('bSub').textContent = mine ? `🎉 ${m.num}번 통, 바로 내 통! 🎉` : '🎉 당첨! 🎉'; $('banner').style.display = 'flex';
+      SFX.fanfare(); setTimeout(() => SFX.speak(mine ? '당신이 당첨!' : `${m.num}번 통, 당첨!`), 900);
+      if (mine) { try { navigator.vibrate && navigator.vibrate([200, 100, 200, 100, 400]); } catch (_) {} }
     }, 300);
   }
 }
@@ -314,6 +334,10 @@ $('mute').onclick = () => { SFX.unlock(); SFX.setMuted(!SFX.isMuted()); $('mute'
 $('again').onclick = () => { $('banner').style.display = 'none'; host('start'); };
 $('close').onclick = () => { $('banner').style.display = 'none'; };
 $('reopen').onclick = () => host('reopen');
+$('hostjoin').onclick = () => {
+  if (G.phase !== 'lobby') return alert('참가를 받는 중에만 바꿀 수 있어요. 결과 후 "참가 다시 받기"를 눌러 주세요.');
+  G.hostPlays = !G.hostPlays; ensureHost(); broadcastState();
+};
 $('newgame').onclick = async () => { if (!confirm('새 게임을 만들까요? 지금 참가자들은 모두 나가게 돼요.')) return; await host('end'); $('grid').innerHTML = ''; init(true); };
 init(false);
 </script>
