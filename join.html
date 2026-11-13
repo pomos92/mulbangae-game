@@ -4,269 +4,42 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#0b2a3d">
-<title>물방개 통</title>
+<title>술게임 참가</title>
 <link rel="stylesheet" href="style.css">
 <style>
-  body { overflow: hidden; height: 100dvh; display: flex; flex-direction: column; }
-  header { padding: max(12px, env(safe-area-inset-top)) 16px 8px; text-align: center; }
-  #status { font-size: 17px; font-weight: 700; min-height: 1.4em; }
-  #sub { font-size: 14px; margin-top: 2px; min-height: 1.2em; }
-  #tub-wrap { flex: 1; padding: 8px 16px max(16px, env(safe-area-inset-bottom)); display: flex; }
-  #tub { flex: 1; border-radius: 36px; border: 10px solid var(--tub, #3BA7E0); box-shadow: inset 0 0 40px rgba(0,0,0,.35), 0 10px 30px rgba(0,0,0,.4); }
-  #num { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 22vmin; font-weight: 900;
-    color: rgba(255,255,255,.28); letter-spacing: -2px; pointer-events: none; z-index: 1; }
-  #num small { display: block; font-size: 5vmin; letter-spacing: 0; color: rgba(255,255,255,.55); }
-  #beetle { position: absolute; left: 0; top: 0; z-index: 3; display: none; will-change: transform; filter: drop-shadow(0 8px 6px rgba(0,0,0,.35)); }
-  #glow { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; transition: opacity .25s;
-    background: radial-gradient(circle, rgba(255,255,255,.35), transparent 70%); }
-  #tub.here #glow { opacity: 1; }
-  #result { position: fixed; inset: 0; z-index: 40; display: none; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 24px; background: rgba(5,20,30,.72); backdrop-filter: blur(3px); }
-  #result h1 { font-size: 14vmin; word-break: keep-all; margin: 0; line-height: 1.05; }
-  #result p { font-size: 20px; margin: 12px 0 0; }
-  #result.win h1 { color: var(--accent); text-shadow: 0 0 30px rgba(255,211,77,.7); animation: pop .6s cubic-bezier(.2,2,.4,1); }
-  #result.win { background: rgba(5,20,30,.3); backdrop-filter: none; justify-content: flex-start; padding-top: 12vh; }
-  #result.lose h1 { color: #d6e6ef; }
-  @keyframes pop { from { transform: scale(.2); } to { transform: scale(1); } }
+  body { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  header { padding: max(10px, env(safe-area-inset-top)) 14px 6px; display: flex; align-items: center; gap: 10px; }
+  #me { font-size: 18px; padding: 4px 12px; }
+  #gname { font-weight: 900; font-size: 18px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status { padding: 0 14px; font-size: 16px; font-weight: 700; min-height: 1.4em; text-align: center; }
+  #stage { flex: 1; position: relative; overflow: auto; padding: 8px 14px max(70px, calc(env(safe-area-inset-bottom) + 64px)); display: flex; flex-direction: column; }
   #err { display: none; position: fixed; inset: 0; z-index: 60; align-items: center; justify-content: center; text-align: center; padding: 24px; font-size: 20px; background: var(--bg); }
-  #snd { position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: max(22px, env(safe-area-inset-bottom)); background: var(--accent); color: var(--accent-ink);
-    box-shadow: 0 6px 20px rgba(0,0,0,.4); font-size: 17px; padding: 12px 20px; border-radius: 999px; }
-  #snd.on { background: rgba(0,0,0,.45); color: #fff; font-size: 15px; padding: 8px 14px; }
-  #tub.sit { animation: tubsit .5s ease-in-out infinite alternate; }
-  @keyframes tubsit { from { border-color: var(--tub, #3BA7E0); } to { border-color: var(--accent); } }
-  #count { position: absolute; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; font-size: 40vmin; font-weight: 900; color: #fff; text-shadow: 0 6px 20px rgba(0,0,0,.4); }
+  #snd { position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom)); background: var(--accent); color: var(--accent-ink);
+    box-shadow: 0 6px 20px rgba(0,0,0,.4); font-size: 16px; padding: 11px 18px; border-radius: 999px; }
+  #snd.on { background: rgba(0,0,0,.45); color: #fff; font-size: 14px; padding: 7px 12px; }
+  .lobbytub { flex: 1; border-radius: 32px; border: 10px solid var(--c); display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 50vh; }
+  .lobbytub .n { position: relative; z-index: 2; font-size: 30vmin; font-weight: 900; color: rgba(255,255,255,.4); line-height: 1; }
+  .lobbytub .t { position: relative; z-index: 2; font-size: 18px; color: rgba(255,255,255,.8); margin-top: 6px; }
 </style>
 </head>
 <body>
-<header>
-  <div id="status">통에 연결하는 중…</div>
-  <div id="sub" class="muted"></div>
-</header>
-<div id="tub-wrap">
-  <div id="tub" class="water">
-    <div id="glow"></div>
-    <div id="num"></div>
-    <div id="count"></div>
-    <div id="beetle"></div>
-  </div>
-</div>
+<header><span id="me" class="tag">…</span><span id="gname">술게임 모임</span></header>
+<div id="status">연결하는 중…</div>
+<div id="stage"></div>
 <button id="snd">🔊 눌러서 소리 켜기</button>
-<div id="result"><h1 id="r-title"></h1><p id="r-sub"></p></div>
 <div id="err"></div>
-<script src="beetle.js"></script>
 <script src="mqtt.min.js"></script>
 <script src="net.js"></script>
 <script src="sound.js"></script>
-<script>
-const $ = id => document.getElementById(id);
-const params = new URLSearchParams(location.search);
-const room = (params.get('r') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-const broker = MB.brokerFromParam(params.get('b')) || MB.BROKERS[0];
-const KEY = 'mb2_pid_' + room;
-let me = null, client = null, anim = null, nums = {}, joined = false, dead = false, gotState = false;
-const beetle = $('beetle');
-beetle.innerHTML = beetleSVG(Math.min(innerWidth, innerHeight) * 0.26);
-const T = MB.PREFIX + room;
-
-function store(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
-function load(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
-function fatal(msg) { dead = true; $('err').textContent = msg; $('err').style.display = 'flex'; if (client) client.end(true); }
-function up(t) { if (client && client.connected && !dead) client.publish(T + '/up', JSON.stringify({ t, pid: me.pid })); }
-
-async function start() {
-  if (!room) return fatal('QR 코드를 다시 찍어 주세요.');
-  me = { pid: load(KEY) || MB.rid(12) };
-  store(KEY, me.pid);
-  $('status').textContent = '물방개 통을 켜는 중…';
-  try { client = (await MB.connectAny([broker], 8000)).client; }
-  catch (e) { $('status').textContent = '인터넷 연결을 확인해 주세요. 다시 시도 중…'; setTimeout(start, 3000); return; }
-  client.on('message', (topic, buf) => {
-    if (dead) return;
-    const txt = buf.toString();
-    if (topic === T + '/state') {
-      if (!txt) { if (joined) fatal('게임이 끝났어요. 고마워요! 🪲'); return; }
-      try { onState(JSON.parse(txt)); } catch (_) { }
-    } else if (topic === T + '/ev') {
-      try { handle(JSON.parse(txt)); } catch (_) { }
-    }
-  });
-  client.on('connect', () => { $('sub').textContent = ''; subscribeAll(); up('join'); });
-  client.on('offline', () => { $('sub').textContent = '인터넷 연결이 끊겼어요. 다시 연결하는 중…'; });
-  subscribeAll();
-  up('join');
-  // 아직 참가 처리가 안 됐으면 다시 요청, 참가했으면 '살아 있음' 신호
-  setInterval(() => { if (!dead) up(joined ? 'hb' : 'join'); }, 3000);
-  setTimeout(() => { if (!gotState && !dead) $('status').textContent = '호스트 화면을 찾는 중… 호스트 화면이 켜져 있는지 확인해 주세요.'; }, 8000);
-}
-function subscribeAll() { client.subscribe([T + '/state', T + '/ev'], { qos: 0 }); }
-
-function onState(m) {
-  gotState = true;
-  const mine = m.players.find(p => p.id === me.pid);
-  if (!mine) {
-    if (joined) return fatal('게임에서 빠졌어요. QR을 다시 찍어 주세요.');
-    if (m.phase !== 'lobby') return fatal('참가가 마감됐어요. 다음 판을 기다려 주세요!');
-    $('status').textContent = '참가 신청 중…';
-    return;
-  }
-  if (!joined) {
-    joined = true;
-    me.num = mine.num; me.color = mine.color;
-    $('tub').style.setProperty('--tub', mine.color);
-    $('num').innerHTML = `${mine.num}<small>번 통</small>`;
-    document.title = `${mine.num}번 물방개 통`;
-  }
-  handle(m);
-}
-
-function handle(m) {
-  if (m.type === 'state') {
-    if (!joined) return;
-    m.players.forEach(p => nums[p.id] = p.num);
-    $('sub').textContent = `참가자 ${m.players.length}명`;
-    if (m.phase === 'lobby') { hideResult(); hideBeetle(); $('status').textContent = '참가 완료! 물방개를 기다리는 중 🪲'; }
-    if (m.phase === 'running') { hideResult(); $('status').textContent = '물방개가 통들을 돌아다니는 중…'; }
-    if (m.phase === 'done' && m.winner && $('result').style.display !== 'flex') showResult(m.winner);
-  } else if (m.type === 'rejected') {
-    if (m.pid === me.pid && !joined) fatal(m.full ? '참가 인원이 가득 찼어요.' : '참가가 마감됐어요. 다음 판을 기다려 주세요!');
-  } else if (m.type === 'kicked') {
-    if (m.pid === me.pid) fatal('호스트가 이 통을 뺐어요.');
-  } else if (m.type === 'ended') {
-    if (joined) fatal('게임이 끝났어요. 고마워요! 🪲');
-  } else if (!joined) {
-    return;
-  } else if (m.type === 'countdown') {
-    hideResult(); hideBeetle(); clearHolds(); countdown(Math.round(m.ms / 1000));
-  } else if (m.type === 'hop') {
-    clearHolds();
-    const where = nums[m.id] ?? '?', mine = m.id === me.pid;
-    $('sub').textContent = `지금 ${where}번 통에 있어요`;
-    SFX.setIntensity(m.idx / Math.max(1, m.total - 1));
-    if (mine) { (m.final || m.fake) ? settle(m.dur, m.fake) : cross(m.dur); SFX.splash(); }
-    else { $('tub').classList.remove('here', 'sit'); }
-    if (m.fake || m.final) {
-      holdTimers.push(setTimeout(() => {
-        SFX.hold();
-        $('status').textContent = mine ? '어…? 내 통에 멈췄다?! 😳' : `${where}번 통에 멈췄다…?!`;
-        if (mine) { $('tub').classList.add('sit'); SFX.heartbeat(2); buzz([60, 160, 60]); }
-      }, 1000));
-      if (m.fake) holdTimers.push(setTimeout(() => {
-        SFX.resume(); SFX.whoosh(); $('tub').classList.remove('sit');
-        $('status').textContent = mine ? '앗! 다시 나가 버렸다 😱' : '앗, 다시 움직인다!';
-      }, 2400));
-      else holdTimers.push(setTimeout(() => SFX.drumroll(1.1), 2400));
-    } else $('status').textContent = '물방개가 통들을 돌아다니는 중…';
-  } else if (m.type === 'winner') {
-    clearHolds(); SFX.stopMusic();
-    showResult(m.id);
-  }
-}
-let holdTimers = [];
-function clearHolds() { holdTimers.forEach(clearTimeout); holdTimers = []; }
-
-function countdown(n) {
-  const c = $('count'); c.style.display = 'flex';
-  const tick = () => { if (n <= 0) { c.style.display = 'none'; SFX.startMusic(); return; } SFX.tick(); c.textContent = n--; setTimeout(tick, 1000); };
-  tick();
-}
-
-function box() { const t = $('tub'); return { w: t.clientWidth, h: t.clientHeight, bw: beetle.offsetWidth, bh: beetle.offsetHeight }; }
-function tf(x, y, a, s) { return `translate(${x}px, ${y}px) rotate(${a}deg) scale(${s || 1})`; }
-function ang(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI + 90; }
-function edgePoint(theta, b) {
-  const R = Math.hypot(b.w, b.h) / 2 + Math.max(b.bw, b.bh);
-  return [b.w / 2 + Math.cos(theta) * R - b.bw / 2, b.h / 2 + Math.sin(theta) * R - b.bh / 2];
-}
-function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (_) {} }
-
-function cross(dur) {
-  beetle.style.display = 'block';
-  const b = box();
-  const t = Math.random() * Math.PI * 2;
-  const [x1, y1] = edgePoint(t, b);
-  const [x3, y3] = edgePoint(t + Math.PI + (Math.random() - .5) * 1.2, b);
-  const mx = b.w / 2 - b.bw / 2 + (Math.random() - .5) * b.w * .35, my = b.h / 2 - b.bh / 2 + (Math.random() - .5) * b.h * .35;
-  const a1 = ang(x1, y1, mx, my), a2 = ang(mx, my, x3, y3);
-  if (anim) anim.cancel();
-  beetle.classList.add('swim');
-  $('tub').classList.add('here');
-  buzz(60);
-  anim = beetle.animate([
-    { transform: tf(x1, y1, a1) },
-    { transform: tf(mx, my, (a1 + a2) / 2), offset: .5 },
-    { transform: tf(x3, y3, a2) }
-  ], { duration: Math.max(300, dur - 80), easing: 'ease-in-out', fill: 'forwards' });
-  anim.onfinish = () => { $('tub').classList.remove('here'); beetle.style.display = 'none'; };
-}
-
-// 들어와서 멈춘다 → (fake면) 1.4초 뒤 다시 튀어나감 / (진짜면) 한 번 꿈틀하고 자리 잡음
-function settle(dur, fake) {
-  beetle.style.display = 'block';
-  const b = box();
-  const t = Math.random() * Math.PI * 2;
-  const [x1, y1] = edgePoint(t, b);
-  const cx = b.w / 2 - b.bw / 2, cy = b.h / 2 - b.bh / 2 - b.h * .06;
-  const a = ang(x1, y1, cx, cy);
-  const at = ms => Math.min(1, ms / dur);
-  if (anim) anim.cancel();
-  beetle.classList.add('swim');
-  $('tub').classList.add('here');
-  buzz([80, 60, 80]);
-  const frames = [
-    { transform: tf(x1, y1, a), offset: 0 },
-    { transform: tf(cx + b.w * .1, cy - b.h * .04, a + 25), offset: at(600), easing: 'ease-out' },
-    { transform: tf(cx, cy, 0, 1.15), offset: at(1000) },
-    { transform: tf(cx, cy, -6, 1.18), offset: at(1500) },
-    { transform: tf(cx, cy, 6, 1.18), offset: at(2000) },
-    { transform: tf(cx, cy, 0, 1.18), offset: at(2400) }
-  ];
-  if (fake) {
-    const [x3, y3] = edgePoint(Math.random() * Math.PI * 2, b);
-    frames.push({ transform: tf(cx, cy, ang(cx, cy, x3, y3) - 20, 1.1), offset: at(2550), easing: 'ease-in' });
-    frames.push({ transform: tf(x3, y3, ang(cx, cy, x3, y3)), offset: 1 });
-  } else {
-    frames.push({ transform: tf(cx + b.w * .05, cy, 25, 1.1), offset: at(2600) });
-    frames.push({ transform: tf(cx - b.w * .05, cy, -25, 1.1), offset: at(2800) });
-    frames.push({ transform: tf(cx, cy, 0, 1.3), offset: 1 });
-  }
-  anim = beetle.animate(frames, { duration: dur, fill: 'forwards' });
-  setTimeout(() => beetle.classList.remove('swim'), 1000);
-  setTimeout(() => beetle.classList.add('swim'), 2400);
-  if (fake) anim.onfinish = () => { $('tub').classList.remove('here', 'sit'); beetle.style.display = 'none'; };
-}
-
-function hideBeetle() { if (anim) anim.cancel(); anim = null; beetle.style.display = 'none'; beetle.classList.remove('swim'); $('tub').classList.remove('here'); }
-function hideResult() { $('result').style.display = 'none'; }
-function showResult(wid) {
-  const r = $('result');
-  const win = wid === me.pid;
-  r.className = win ? 'win' : 'lose';
-  $('r-title').textContent = win ? '당신이 당첨!' : '꽝!';
-  $('r-sub').textContent = win ? '물방개가 내 통에 쏙 들어왔어요!' : `물방개는 ${nums[wid] ?? '?'}번 통으로 갔어요`;
-  r.style.display = 'flex';
-  $('status').textContent = win ? '당첨됐어요!' : '다음 판을 기다려요';
-  $('tub').classList.remove('sit');
-  if (win) { beetle.classList.remove('swim'); buzz([200, 100, 200, 100, 400]); confetti(); SFX.fanfare(); setTimeout(() => SFX.speak('당신이 당첨!'), 900); }
-  else { hideBeetle(); SFX.fail(); }
-}
-function confetti() {
-  const cs = ['#ffd34d', '#ff6b6b', '#6be38f', '#56ccf2', '#bb6bd9', '#fff'];
-  for (let i = 0; i < 90; i++) {
-    const d = document.createElement('div'); d.className = 'confetti';
-    d.style.left = Math.random() * 100 + 'vw'; d.style.background = cs[i % cs.length];
-    d.style.animationDuration = 2 + Math.random() * 2.5 + 's'; d.style.animationDelay = Math.random() * 1.2 + 's';
-    document.body.appendChild(d); setTimeout(() => d.remove(), 6000);
-  }
-}
-// 화면 꺼짐 방지 (지원 브라우저만)
-async function wake() { try { await navigator.wakeLock.request('screen'); } catch (_) {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') wake(); });
-document.addEventListener('click', wake, { once: true });
-wake();
-function sndLabel() { const b = $('snd'); if (SFX.isMuted()) { b.className = 'on'; b.textContent = '🔇 소리 꺼짐'; } else if (SFX.state() === 'running') { b.className = 'on'; b.textContent = '🔊 소리 켜짐'; } else { b.className = ''; b.textContent = '🔊 눌러서 소리 켜기'; } }
-document.addEventListener('pointerdown', e => { if (e.target.id !== 'snd') { SFX.unlock(); setTimeout(sndLabel, 200); } }, { capture: true });
-$('snd').onclick = () => { if (SFX.state() !== 'running') { SFX.unlock(); SFX.setMuted(false); } else SFX.setMuted(!SFX.isMuted()); setTimeout(sndLabel, 200); };
-start();
-</script>
+<script src="beetle.js"></script>
+<script src="common.js"></script>
+<script src="games/beetle.js"></script>
+<script src="games/bottle.js"></script>
+<script src="games/cards.js"></script>
+<script src="games/king.js"></script>
+<script src="games/traps.js"></script>
+<script src="games/liar.js"></script>
+<script src="games/lowhigh.js"></script>
+<script src="player.js"></script>
 </body>
 </html>
