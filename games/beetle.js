@@ -81,20 +81,22 @@
   }
   function hideBeetle(t) { if (t._anim) t._anim.cancel(); const b = t.querySelector('.bt'); b.style.display = 'none'; b.classList.remove('swim'); t.classList.remove('here', 'sit'); }
 
-  function countdown(el, n, done) {
+  function countdown(el, n, done, sfx) {
+    sfx = sfx || SFX;
     let c = el.querySelector('.bcount');
     if (!c) { c = U.el('<div class="bcount"></div>'); (el.querySelector('.btub') || el).appendChild(c); }
     c.style.display = 'flex';
-    const tick = () => { if (n <= 0) { c.style.display = 'none'; done && done(); return; } SFX.tick(); c.textContent = n--; setTimeout(tick, 1000); };
+    const tick = () => { if (n <= 0) { c.style.display = 'none'; done && done(); return; } sfx.tick(); c.textContent = n--; setTimeout(tick, 1000); };
     tick();
   }
 
+  const QUIET = new Proxy({}, { get: () => () => { } });
   const holds = new WeakMap();
   function clearHolds(el) { (holds.get(el) || []).forEach(clearTimeout); holds.set(el, []); }
   function hold(el, ms, fn) { const a = holds.get(el) || []; a.push(setTimeout(fn, ms)); holds.set(el, a); }
 
   defineGame({
-    id: 'beetle', name: '물방개 게임', emoji: '🪲', min: 1,
+    id: 'beetle', name: '물방개 게임', emoji: '🪲', min: 1, seatPanel: true,
     desc: '물방개가 모든 폰을 돌아다니다 한 통에 쏙! 그 사람이 당첨',
     init: () => ({ phase: 'ready', winner: null, n: 0 }),
     controls(H) {
@@ -107,7 +109,7 @@
       if (!grid) {
         el.innerHTML = '<div class="big-msg bmsg"></div><div class="bgrid"></div>';
         grid = el.querySelector('.bgrid');
-        grid.innerHTML = H.seats().map(p => `<div class="btile water" data-id="${p.id}" style="--c:${p.color}"><span class="n">${p.num}</span>${H.isMe(p.id) ? '<span class="me">나</span>' : ''}<div class="bb">${beetleSVG(46)}</div></div>`).join('');
+        grid.innerHTML = H.seats().map(p => `<div class="btile water" data-id="${p.id}" style="--c:${p.color}"><span class="n">${p.num}</span>${H.isMe(p.id) ? '<span class="me">나</span>' : ''}<div class="bb">${beetleSVG(72)}</div></div>`).join('');
       }
       el.querySelector('.bmsg').textContent = gs.phase === 'ready' ? '물방개 출발! 을 누르세요' : gs.phase === 'running' ? (el._msg || '물방개가 돌아다니는 중…') : `${H.label(gs.winner)} 당첨!`;
       grid.querySelectorAll('.btile').forEach(t => {
@@ -124,10 +126,12 @@
     },
     onEvent(ctx, m, el, isSeat) {
       const host = ctx.isHost;
+      // 호스트 화면의 '내 자리' 큰 통: 소리는 호스트 화면 쪽에서 이미 나니까 여기선 조용히
+      const SFX = isSeat ? QUIET : window.SFX;
       if (m.k === 'countdown') {
         clearHolds(el);
         if (host) { el._msg = ''; countdown(el.querySelector('.bgrid') ? el : el, 3, () => SFX.startMusic()); }
-        else { const t = tubDom(el, ctx); hideBeetle(t); countdown(el, 3, () => SFX.startMusic()); }
+        else { const t = tubDom(el, ctx); hideBeetle(t); countdown(el, 3, () => SFX.startMusic(), SFX); }
       } else if (m.k === 'hop') {
         clearHolds(el);
         const mine = !host && ctx.isMe(m.id), where = ctx.label(m.id);

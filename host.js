@@ -116,6 +116,8 @@
     $('qrwrap').classList.add('mini');
     stageKey = '';
     broadcastState();
+    // 휴대폰처럼 좁은 화면에서는 게임 화면이 아래에 있으니 그쪽으로 내려 줌
+    if (innerWidth < 900) setTimeout(() => $('gtitle').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
   H.restart = () => startGame(G.game);
   function backToMenu() {
