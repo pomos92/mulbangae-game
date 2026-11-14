@@ -80,12 +80,18 @@ location = /mqtt {
 }
 NGX
 sed -i "s/MQ_PORT_PLACEHOLDER/$MQ_PORT/" "$SNIPPET"
+# nginx가 실제로 읽는 설정 파일만 대상으로 (.bak 같은 백업 파일 제외)
+LOADED=$(nginx -T 2>/dev/null | sed -n 's/^# configuration file \(.*\):$/\1/p' | sort -u)
+mkdir -p /root/nginx-backup
 # maze.funnyqr.com 의 443(https) server 블록 안에 include 한 줄 넣기
-CONF_FILE=$(grep -RlE "server_name[^;]*\b${DOMAIN//./\\.}\b" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -1 || true)
-[ -n "$CONF_FILE" ] || { echo "nginx 설정에서 $DOMAIN 을 못 찾았어요"; exit 1; }
-CONF_FILE=$(readlink -f "$CONF_FILE")
+CONF_FILE=""
+for f in $LOADED; do
+  grep -qE "server_name[^;]*\b${DOMAIN//./\\.}\b" "$f" && grep -qE "listen[^;]*443" "$f" && { CONF_FILE=$f; break; }
+done
+[ -n "$CONF_FILE" ] || { echo "nginx 설정에서 $DOMAIN (443) 을 못 찾았어요"; exit 1; }
+echo "   설정 파일: $CONF_FILE"
 if ! grep -q "funnyqr-party.conf" "$CONF_FILE"; then
-  cp "$CONF_FILE" "$CONF_FILE.bak.$(date +%s)"
+  cp "$CONF_FILE" "/root/nginx-backup/$(basename "$CONF_FILE").$(date +%s)"
   python3 - "$CONF_FILE" "$DOMAIN" <<'PY'
 import re, sys
 path, dom = sys.argv[1], sys.argv[2]
@@ -112,8 +118,7 @@ ADS_SNIPPET=/etc/nginx/snippets/funnyqr-ads.conf
 cat > "$ADS_SNIPPET" <<'NGX'
 location = /ads.txt { alias /opt/funnyqr-party/ads.txt; default_type text/plain; add_header Cache-Control "no-cache"; }
 NGX
-for f in $(grep -RlE "server_name" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null); do
-  f=$(readlink -f "$f")
+for f in $(grep -lE "server_name" $LOADED 2>/dev/null); do
   grep -q "funnyqr-ads.conf" "$f" && continue
   python3 - "$f" "$DOMAIN" <<'PY2'
 import re, sys
@@ -138,7 +143,7 @@ if done:
     open(path, 'w').write(''.join(out)); print('   ads.txt 연결:', path, done, '곳')
 PY2
 done
-grep -RqE "server_name[^;]*[[:space:]]funnyqr\.com[[:space:];]" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null \
+grep -qE "server_name[^;]*[[:space:]]funnyqr\.com[[:space:];]" $LOADED 2>/dev/null \
   || echo "   !! nginx에 funnyqr.com(루트) 설정이 없어요. https://funnyqr.com/ads.txt 는 따로 올려야 해요."
 
 nginx -t
