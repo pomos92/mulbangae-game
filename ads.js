@@ -4,7 +4,7 @@
 // - SLOT 이 비어 있으면 아무것도 안 해요. AdSense > 광고 > 광고 단위별 > 디스플레이 광고에서 만든 data-ad-slot 숫자를 넣으세요.
 (function () {
   const CLIENT = 'ca-pub-7567911347694948';
-  const SLOT = { host: '', join: '' };   // 예: host: '1234567890'
+  const SLOT = { host: '7078233497', join: '7078233497' };
   const ua = navigator.userAgent || '';
   const inApp = /; wv\)/.test(ua) || /MulbangaeApp/i.test(ua);
   const okHost = /(^|\.)funnyqr\.com$/i.test(location.hostname) || /[?&]adtest=1/.test(location.search);
