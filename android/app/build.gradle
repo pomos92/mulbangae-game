@@ -4,10 +4,10 @@ android {
     compileSdk 36
     defaultConfig {
         applicationId 'com.mulbangae.game'
-        minSdk 23
+        minSdk 24
         targetSdk 36
-        versionCode 5
-        versionName '5.0'
+        versionCode 6
+        versionName '6.0'
         multiDexEnabled true
     }
     buildTypes { release { minifyEnabled false } }   // 서명은 빌드 뒤에 기존 release.keystore로 따로 해요
