@@ -16,25 +16,42 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq mosquitto git >/dev/null
 
-echo "== 2/4 MQTT 중계 설정 (내부 127.0.0.1:9001, 게임 토픽만 허용)"
+echo "== 2/4 MQTT 중계 설정 (내부 127.0.0.1, 게임 토픽만 허용)"
+# 비어 있는 포트 고르기 (9001부터)
+port_busy() { ss -ltnH "( sport = :$1 )" 2>/dev/null | grep -q . ; }
+systemctl stop mosquitto 2>/dev/null || true
+MQ_PORT=""
+for p in 9001 9011 9021 19001 29001; do port_busy "$p" || { MQ_PORT=$p; break; }; done
+[ -n "$MQ_PORT" ] || { echo "빈 포트를 못 찾았어요"; exit 1; }
+echo "   포트: $MQ_PORT"
 cat > /etc/mosquitto/conf.d/funnyqr-party.conf <<CONF
-listener 9001 127.0.0.1
+listener $MQ_PORT 127.0.0.1
 protocol websockets
 allow_anonymous true
 acl_file /etc/mosquitto/funnyqr-party.acl
 max_connections 5000
 message_size_limit 262144
 max_queued_messages 2000
-persistence true
 CONF
 cat > /etc/mosquitto/funnyqr-party.acl <<'ACL'
 topic readwrite mulbangae/#
 ACL
-chmod 644 /etc/mosquitto/funnyqr-party.acl
+chmod 644 /etc/mosquitto/conf.d/funnyqr-party.conf /etc/mosquitto/funnyqr-party.acl
+mkdir -p /var/log/mosquitto /var/lib/mosquitto /run/mosquitto
+chown -R mosquitto: /var/log/mosquitto /var/lib/mosquitto /run/mosquitto 2>/dev/null || true
+systemctl reset-failed mosquitto 2>/dev/null || true
 systemctl enable -q mosquitto
-systemctl restart mosquitto
-sleep 1
-systemctl is-active --quiet mosquitto || { journalctl -u mosquitto -n 30 --no-pager; exit 1; }
+if ! systemctl restart mosquitto || ! { sleep 2; systemctl is-active --quiet mosquitto; }; then
+  echo "!! mosquitto 시작 실패. 원인 확인용 정보:"
+  ls /etc/mosquitto/conf.d/
+  echo "--- 설정 직접 실행 결과"
+  timeout 3 mosquitto -c /etc/mosquitto/mosquitto.conf -v 2>&1 | tail -15 || true
+  echo "--- 로그"
+  tail -15 /var/log/mosquitto/mosquitto.log 2>/dev/null || true
+  journalctl -u mosquitto -n 15 --no-pager 2>/dev/null || true
+  exit 1
+fi
+echo "   mosquitto 실행 중"
 
 echo "== 3/4 게임 파일 받기 → $APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then git -C "$APP_DIR" fetch -q origin main && git -C "$APP_DIR" reset -q --hard origin/main
@@ -53,7 +70,7 @@ location /party/ {
     location ^~ /party/server/ { deny all; }
 }
 location = /mqtt {
-    proxy_pass http://127.0.0.1:9001;
+    proxy_pass http://127.0.0.1:MQ_PORT_PLACEHOLDER;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
@@ -62,6 +79,7 @@ location = /mqtt {
     proxy_send_timeout 3600s;
 }
 NGX
+sed -i "s/MQ_PORT_PLACEHOLDER/$MQ_PORT/" "$SNIPPET"
 # maze.funnyqr.com 의 443(https) server 블록 안에 include 한 줄 넣기
 CONF_FILE=$(grep -RlE "server_name[^;]*\b${DOMAIN//./\\.}\b" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -1 || true)
 [ -n "$CONF_FILE" ] || { echo "nginx 설정에서 $DOMAIN 을 못 찾았어요"; exit 1; }
