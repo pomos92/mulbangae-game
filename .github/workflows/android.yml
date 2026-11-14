@@ -1,0 +1,30 @@
+name: android-apk
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: Build unsigned release APK
+        working-directory: android
+        run: gradle --no-daemon assembleRelease 2>&1 | tee ../build.log; exit ${PIPESTATUS[0]}
+      - name: Publish result to apk-build branch
+        if: always()
+        run: |
+          mkdir -p out && cp build.log out/ || true
+          cp android/app/build/outputs/apk/release/*.apk out/ 2>/dev/null || true
+          echo "${{ job.status }} ${{ github.sha }}" > out/STATUS
+          cd out && git init -q && git checkout -q -b apk-build
+          git -c user.name=github-actions -c user.email=actions@github.com add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -qm "APK build for ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk-build

@@ -1,0 +1,18 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.mulbangae.game'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'com.mulbangae.game'
+        minSdk 21
+        targetSdk 34
+        versionCode 4
+        versionName '4.0'
+        multiDexEnabled true
+    }
+    buildTypes { release { minifyEnabled false } }   // 서명은 빌드 뒤에 기존 release.keystore로 따로 해요
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+}
+dependencies {
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
+}
