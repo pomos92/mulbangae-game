@@ -30,9 +30,11 @@ window.MB = (function () {
     return new Promise((resolve, reject) => {
       const c = mqtt.connect(url, { clientId: 'mb_' + rid(10), keepalive: 30, reconnectPeriod: 2000, connectTimeout: timeoutMs, clean: true });
       const t = setTimeout(() => { c.end(true); reject(new Error('timeout')); }, timeoutMs + 500);
-      c.once('connect', () => { clearTimeout(t); resolve(c); });
-      // 연결되기 전에 끊기면(서버 없음 등) 기다리지 않고 바로 다음 중계 서버로
-      c.once('close', () => { if (!c.connected) { clearTimeout(t); c.end(true); reject(new Error('closed')); } });
+      // 처음 연결되기 전에 끊기면(서버 없음 등) 기다리지 않고 바로 다음 중계 서버로.
+      // 연결된 뒤에 끊기는 건(와이파이↔데이터 전환 등) mqtt.js가 알아서 다시 연결하게 둠.
+      const onFirstClose = () => { clearTimeout(t); c.end(true); reject(new Error('closed')); };
+      c.once('close', onFirstClose);
+      c.once('connect', () => { clearTimeout(t); c.removeListener('close', onFirstClose); resolve(c); });
     });
   }
 
