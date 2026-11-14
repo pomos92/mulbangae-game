@@ -1,7 +1,10 @@
-// 실시간 연결: 무료 공개 MQTT 중계 서버(WebSocket)를 사용합니다. 따로 서버가 필요 없어요.
+// 실시간 연결: 우리 서버(maze.funnyqr.com)의 MQTT 중계(WebSocket)를 먼저 쓰고,
+// 안 되면 무료 공개 MQTT 중계 서버로 넘어갑니다.
 // 호스트 화면이 게임 진행을 맡고, 참가자 휴대폰은 중계 서버를 통해 메시지를 주고받습니다.
 window.MB = (function () {
+  const OWN = 'wss://maze.funnyqr.com/mqtt';
   const BROKERS = [
+    OWN,
     'wss://broker.emqx.io:8084/mqtt',
     'wss://broker.hivemq.com:8884/mqtt',
     'wss://test.mosquitto.org:8081/mqtt'
@@ -28,6 +31,8 @@ window.MB = (function () {
       const c = mqtt.connect(url, { clientId: 'mb_' + rid(10), keepalive: 30, reconnectPeriod: 2000, connectTimeout: timeoutMs, clean: true });
       const t = setTimeout(() => { c.end(true); reject(new Error('timeout')); }, timeoutMs + 500);
       c.once('connect', () => { clearTimeout(t); resolve(c); });
+      // 연결되기 전에 끊기면(서버 없음 등) 기다리지 않고 바로 다음 중계 서버로
+      c.once('close', () => { if (!c.connected) { clearTimeout(t); c.end(true); reject(new Error('closed')); } });
     });
   }
 

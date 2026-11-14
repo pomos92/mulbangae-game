@@ -198,7 +198,7 @@
     ensureHost(); save();
     setWarn('실시간 중계 서버에 연결하는 중…');
     if (!client) {
-      const list = params.get('broker') ? [params.get('broker')] : (G.broker ? [G.broker, ...MB.BROKERS.filter(b => b !== G.broker)] : MB.BROKERS);
+      const list = params.get('broker') ? [params.get('broker')] : MB.BROKERS;
       try { const r = await MB.connectAny(list); client = r.client; brokerUrl = r.url; }
       catch (e) { setWarn('⚠️ ' + e.message + ' 잠시 후 다시 시도해요.', true); setTimeout(() => init(false), 4000); return; }
       client.on('message', (topic, buf) => {

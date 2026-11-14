@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# 술게임 모임 서버 설치 (Ubuntu/Debian + nginx). 여러 번 실행해도 안전해요(업데이트도 이걸로).
+#   curl -fsSL https://raw.githubusercontent.com/pomos92/mulbangae-game/main/server/setup.sh | sudo bash
+# 결과:  https://<도메인>/party/  게임 화면,  wss://<도메인>/mqtt  실시간 중계
+set -euo pipefail
+DOMAIN="${DOMAIN:-maze.funnyqr.com}"
+REPO="${REPO:-https://github.com/pomos92/mulbangae-game.git}"
+APP_DIR=/opt/funnyqr-party
+SNIPPET=/etc/nginx/snippets/funnyqr-party.conf
+
+[ "$(id -u)" = 0 ] || { echo "sudo로 실행해 주세요"; exit 1; }
+command -v nginx >/dev/null || { echo "nginx가 없어요. 이 서버의 웹서버 종류를 알려 주세요."; exit 1; }
+
+echo "== 1/4 패키지 설치 (mosquitto, git)"
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -qq
+apt-get install -y -qq mosquitto git >/dev/null
+
+echo "== 2/4 MQTT 중계 설정 (내부 127.0.0.1:9001, 게임 토픽만 허용)"
+cat > /etc/mosquitto/conf.d/funnyqr-party.conf <<CONF
+listener 9001 127.0.0.1
+protocol websockets
+allow_anonymous true
+acl_file /etc/mosquitto/funnyqr-party.acl
+max_connections 5000
+message_size_limit 262144
+max_queued_messages 2000
+persistence true
+CONF
+cat > /etc/mosquitto/funnyqr-party.acl <<'ACL'
+topic readwrite mulbangae/#
+ACL
+chmod 644 /etc/mosquitto/funnyqr-party.acl
+systemctl enable -q mosquitto
+systemctl restart mosquitto
+sleep 1
+systemctl is-active --quiet mosquitto || { journalctl -u mosquitto -n 30 --no-pager; exit 1; }
+
+echo "== 3/4 게임 파일 받기 → $APP_DIR"
+if [ -d "$APP_DIR/.git" ]; then git -C "$APP_DIR" fetch -q origin main && git -C "$APP_DIR" reset -q --hard origin/main
+else rm -rf "$APP_DIR"; git clone -q --depth 1 "$REPO" "$APP_DIR"; fi
+chmod -R a+rX "$APP_DIR"
+
+echo "== 4/4 nginx 연결 (/party/, /mqtt)"
+mkdir -p /etc/nginx/snippets
+cat > "$SNIPPET" <<'NGX'
+location = /party { return 301 /party/; }
+location /party/ {
+    alias /opt/funnyqr-party/;
+    index index.html;
+    add_header Cache-Control "no-cache";
+    location ~ /\.git { deny all; }
+    location ^~ /party/server/ { deny all; }
+}
+location = /mqtt {
+    proxy_pass http://127.0.0.1:9001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+}
+NGX
+# maze.funnyqr.com 의 443(https) server 블록 안에 include 한 줄 넣기
+CONF_FILE=$(grep -RlE "server_name[^;]*\b${DOMAIN//./\\.}\b" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null | head -1 || true)
+[ -n "$CONF_FILE" ] || { echo "nginx 설정에서 $DOMAIN 을 못 찾았어요"; exit 1; }
+CONF_FILE=$(readlink -f "$CONF_FILE")
+if ! grep -q "funnyqr-party.conf" "$CONF_FILE"; then
+  cp "$CONF_FILE" "$CONF_FILE.bak.$(date +%s)"
+  python3 - "$CONF_FILE" "$DOMAIN" <<'PY'
+import re, sys
+path, dom = sys.argv[1], sys.argv[2]
+s = open(path).read()
+out, i, done = [], 0, 0
+# server { ... } 블록을 찾아서, 해당 도메인 + 443 블록의 server_name 줄 다음에 include 추가
+for m in re.finditer(r'server\s*\{', s):
+    start = m.end(); depth = 1; j = start
+    while depth and j < len(s):
+        depth += {'{': 1, '}': -1}.get(s[j], 0); j += 1
+    block = s[start:j]
+    if re.search(r'server_name[^;]*\b' + re.escape(dom) + r'\b', block) and re.search(r'listen[^;]*443', block):
+        nm = re.search(r'server_name[^;]*;\n?', block)
+        pos = start + nm.end()
+        out.append(s[i:pos]); out.append('    include /etc/nginx/snippets/funnyqr-party.conf;\n'); i = pos; done += 1
+out.append(s[i:])
+if not done: sys.exit("443 server 블록을 못 찾았어요")
+open(path, 'w').write(''.join(out))
+PY
+fi
+nginx -t
+systemctl reload nginx
+
+echo
+echo "완료!  게임:  https://$DOMAIN/party/"
+echo "      중계:  wss://$DOMAIN/mqtt  (mosquitto $(mosquitto -h 2>/dev/null | head -1 | awk '{print $3}'))"
+echo "업데이트할 땐 이 명령을 다시 실행하면 돼요."

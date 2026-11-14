@@ -27,3 +27,15 @@
 - `games/*.js` 각 게임 · `beetle.js` 물방개 그림 · `sound.js` 음악·효과음 · `net.js` 실시간 연결 · `style.css`
 - 새 게임은 `games/`에 `defineGame({...})` 파일을 만들고 두 HTML에 script 한 줄씩 추가
 - `qrcode.js` (MIT, Kazuhiko Arase) · `mqtt.min.js` (MQTT.js 5.10.1, MIT)
+
+## 내 서버에 올리기 (maze.funnyqr.com)
+Ubuntu + nginx 서버에서 한 줄이면 됩니다. 여러 번 실행해도 안전하고, 게임을 업데이트할 때도 같은 명령을 씁니다.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pomos92/mulbangae-game/main/server/setup.sh | sudo bash
+```
+
+- 게임: `https://maze.funnyqr.com/party/` (레포를 `/opt/funnyqr-party`에 받아 nginx가 보여 줌)
+- 실시간 중계: `wss://maze.funnyqr.com/mqtt` → mosquitto(127.0.0.1:9001, `mulbangae/#` 토픽만 허용)
+- 기존 nginx 설정은 `.bak.<시각>`으로 백업한 뒤 443 server 블록에 include 한 줄만 추가
+- `net.js`는 이 중계를 먼저 시도하고, 안 되면 공개 중계 서버로 바로 넘어감
