@@ -200,3 +200,12 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .panel:has(> .stage.g-beetle) > .stage { order: 3; min-height: 0; }
 #mine .btub { min-height: 46vh; }
 .btile .bb svg { width: 72%; height: auto; }
+
+/* 숫자 카드 2장 모드 */
+.chand { display: flex; gap: 6px; justify-content: center; }
+.chand .pcard + .pcard { margin-left: -10px; }
+.cmine .chand { gap: 10px; } .cmine .chand .pcard + .pcard { margin-left: 0; }
+.csum { font-size: 15px; color: var(--accent); }
+.cmine .chand:has(.pcard + .pcard) .pcard.big { width: min(42vw, 200px); height: min(60vw, 285px); }
+.cmine .chand:has(.pcard + .pcard) .pcard.big .mid { font-size: 80px; }
+.cmine .chand:has(.pcard + .pcard) .pcard.big .c { font-size: 26px; }
