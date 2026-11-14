@@ -62,7 +62,7 @@ echo "== 4/4 nginx 연결 (/party/, /mqtt)"
 mkdir -p /etc/nginx/snippets
 cat > "$SNIPPET" <<'NGX'
 location = /party { return 301 /party/; }
-location /party/ {
+location ^~ /party/ {   # ^~ : 기존 maze 설정의 정규식 location(.html 등)보다 우선
     alias /opt/funnyqr-party/;
     index index.html;
     add_header Cache-Control "no-cache";
