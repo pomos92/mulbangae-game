@@ -55,6 +55,7 @@
       <button id="hostjoin" class="btn-sub" style="width:100%;font-size:15px;padding:11px">🙋 나도 참가 중</button>
       <div class="sidebtns"><button id="newroom" class="btn-sub">새 방 만들기</button><button id="mute" class="btn-sub" style="flex:0 0 56px">🔊</button></div>
     </div>
+    <div id="adhost"></div>
   </div>
   <div class="panel">
     <div class="head"><span id="gtitle">🍻 게임 고르기</span><button id="back" class="btn-sub">☰ 게임 목록</button></div>
@@ -77,5 +78,7 @@
 <script src="games/liar.js"></script>
 <script src="games/lowhigh.js"></script>
 <script src="host.js"></script>
+<script src="ads.js"></script>
+<script>ADS.mount(document.getElementById('adhost'), 'host');</script>
 </body>
 </html>

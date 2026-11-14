@@ -89,6 +89,7 @@
       $('status').textContent = '참가 완료! 호스트가 게임을 고르는 중 🍻';
       if (!stage.querySelector('.lobbytub')) stage.innerHTML = `<div class="lobbytub water" style="--c:${me.color}"><span class="n">${me.num}</span><span class="t">번 자리 · 참가자 ${S.players.length}명</span></div>`;
       else stage.querySelector('.t').textContent = `번 자리 · 참가자 ${S.players.length}명`;
+      if (window.ADS) ADS.mount(stage, 'join');
       return;
     }
     if (!S.gs || !S.gs.seats.includes(me.pid)) {

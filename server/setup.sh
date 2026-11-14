@@ -106,10 +106,46 @@ if not done: sys.exit("443 server 블록을 못 찾았어요")
 open(path, 'w').write(''.join(out))
 PY
 fi
+
+echo "== 광고 ads.txt (funnyqr.com, www.funnyqr.com, $DOMAIN)"
+ADS_SNIPPET=/etc/nginx/snippets/funnyqr-ads.conf
+cat > "$ADS_SNIPPET" <<'NGX'
+location = /ads.txt { alias /opt/funnyqr-party/ads.txt; default_type text/plain; add_header Cache-Control "no-cache"; }
+NGX
+for f in $(grep -RlE "server_name" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null); do
+  f=$(readlink -f "$f")
+  grep -q "funnyqr-ads.conf" "$f" && continue
+  python3 - "$f" "$DOMAIN" <<'PY2'
+import re, sys
+path, dom = sys.argv[1], sys.argv[2]
+names = {'funnyqr.com', 'www.funnyqr.com', dom}
+s = open(path).read()
+out, i, done = [], 0, 0
+for m in re.finditer(r'server\s*\{', s):
+    start = m.end(); depth = 1; j = start
+    while depth and j < len(s):
+        depth += {'{': 1, '}': -1}.get(s[j], 0); j += 1
+    block = s[start:j]
+    nm = re.search(r'server_name([^;]*);\n?', block)
+    if not nm or not (set(nm.group(1).split()) & names) or 'ads.txt' in block: continue
+    pos = start + nm.end()
+    out.append(s[i:pos]); out.append('    include /etc/nginx/snippets/funnyqr-ads.conf;\n'); i = pos; done += 1
+out.append(s[i:])
+if done:
+    import os, shutil, time
+    os.makedirs('/root/nginx-backup', exist_ok=True)
+    shutil.copy(path, '/root/nginx-backup/%s.%d' % (os.path.basename(path), time.time()))
+    open(path, 'w').write(''.join(out)); print('   ads.txt 연결:', path, done, '곳')
+PY2
+done
+grep -RqE "server_name[^;]*[[:space:]]funnyqr\.com[[:space:];]" /etc/nginx/sites-enabled /etc/nginx/conf.d 2>/dev/null \
+  || echo "   !! nginx에 funnyqr.com(루트) 설정이 없어요. https://funnyqr.com/ads.txt 는 따로 올려야 해요."
+
 nginx -t
 systemctl reload nginx
 
 echo
 echo "완료!  게임:  https://$DOMAIN/party/"
 echo "      중계:  wss://$DOMAIN/mqtt  (mosquitto $(mosquitto -h 2>/dev/null | head -1 | awk '{print $3}'))"
+echo "      광고:  https://funnyqr.com/ads.txt  ,  https://$DOMAIN/ads.txt"
 echo "업데이트할 땐 이 명령을 다시 실행하면 돼요."
