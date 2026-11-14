@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MulbangaeApp/4");
+        s.setUserAgentString(s.getUserAgentString() + " MulbangaeApp/5");
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -60,6 +60,8 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.parseColor("#0b2a3d"));
+        // Android 15+(targetSdk 35 이상)는 화면이 상태바/내비바 아래까지 그려져서, 그만큼 안쪽 여백을 둬요
+        root.setFitsSystemWindows(true);
         root.addView(web, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         adView = new AdView(this);
         adView.setAdUnitId(BANNER_ID);
