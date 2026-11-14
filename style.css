@@ -122,7 +122,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .kwait { font-size: 30vmin; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ───── 🐊 악어 / 🏴‍☠️ 해적 ───── */
-.tboard { margin: 10px auto 18px; max-width: 560px; }
+.tboard { margin: 10px auto 18px; max-width: 560px; width: 100%; box-sizing: border-box; align-self: stretch; }
 .tboard.myturn { filter: drop-shadow(0 0 18px rgba(255,211,77,.6)); }
 .croc { display: flex; flex-direction: column; align-items: center; }
 .cjaw { width: 100%; background: #3d9a4a; padding: 14px 18px; position: relative; }
