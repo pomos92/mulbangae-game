@@ -14,7 +14,8 @@
     if (loaded) return; loaded = true;
     const s = document.createElement('script');
     s.async = true; s.crossOrigin = 'anonymous';
-    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + CLIENT;
+    // ?client= 를 붙이지 않아요. 붙이면 AdSense '자동 광고'가 켜져서 게임 화면 위에 큰 빈 광고·상단 고정 광고가 끼어들어요.
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
     document.head.appendChild(s);
   }
   // container 안에 광고 하나를 붙여요. 같은 container 에 이미 있으면 그대로 둬요.
@@ -24,8 +25,8 @@
     load();
     const box = document.createElement('div');
     box.className = 'adbox';
-    box.innerHTML = '<div class="adlabel">광고</div><ins class="adsbygoogle" style="display:block" data-ad-client="' + CLIENT +
-      '" data-ad-slot="' + slot + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+    box.innerHTML = '<div class="adlabel">광고</div><ins class="adsbygoogle" style="display:inline-block;width:320px;height:100px" data-ad-client="' + CLIENT +
+      '" data-ad-slot="' + slot + '"></ins>';
     container.appendChild(box);
     try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (_) { }
   }
