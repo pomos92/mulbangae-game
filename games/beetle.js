@@ -164,7 +164,7 @@
         clearHolds(el); SFX.stopMusic(); el._st = false;
         const meWin = ctx.isMe(m.id);
         if (!host) { const t = tubDom(el, ctx); t.classList.remove('sit'); if (!meWin) hideBeetle(t); else t.querySelector('.bt').classList.remove('swim'); }
-        if (host || !isSeat) setTimeout(() => U.banner(meWin ? '당신이 당첨!' : `${ctx.label(m.id)} 당첨!`, meWin ? '물방개가 내 통에 쏙 들어왔어요! 🍺' : '🪲 물방개가 들어간 통이에요', meWin ? 'me' : 'other'), 300);
+        if (host || !isSeat) setTimeout(() => U.banner(meWin ? '당신이 당첨!' : `${ctx.label(m.id)} 당첨!`, meWin ? '물방개가 내 통에 쏙 들어왔어요! 😱' : '🪲 물방개가 들어간 통이에요', meWin ? 'me' : 'other'), 300);
       }
     }
   });

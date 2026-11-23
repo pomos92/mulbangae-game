@@ -6,8 +6,8 @@ android {
         applicationId 'com.mulbangae.game'
         minSdk 24
         targetSdk 36
-        versionCode 6
-        versionName '6.0'
+        versionCode 7
+        versionName '7.0'
         multiDexEnabled true
     }
     buildTypes { release { minifyEnabled false } }   // 서명은 빌드 뒤에 기존 release.keystore로 따로 해요

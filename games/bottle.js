@@ -1,8 +1,8 @@
-// 🍾 술병 돌리기: 가운데 술병이 빙글빙글 돌다가 한 사람을 가리키며 멈춤
+// 🌀 병 돌리기: 가운데 병이 빙글빙글 돌다가 한 사람을 가리키며 멈춤
 (function () {
   const SPIN_MS = 6500;
 
-  // 참가자 번호를 원 위에 배치하고 가운데에 술병
+  // 참가자 번호를 원 위에 배치하고 가운데에 병
   function wheel(seats, ctx, size) {
     const n = seats.length;
     const r = 42; // %
@@ -17,7 +17,7 @@
         <defs><linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#1f7a3a"/><stop offset=".45" stop-color="#3fbf63"/><stop offset="1" stop-color="#145a28"/></linearGradient></defs>
         <rect x="23" y="2" width="14" height="14" rx="3" fill="#ffd34d"/>
         <path d="M24 14 h12 v40 q0 14 14 26 q6 6 6 18 v86 q0 12 -12 12 h-28 q-12 0 -12 -12 v-86 q0 -12 6 -18 q14 -12 14 -26z" fill="url(#gl)" stroke="#0c3b18" stroke-width="2"/>
-        <rect x="10" y="110" width="40" height="40" rx="4" fill="#fff5d6"/><text x="30" y="136" font-size="15" text-anchor="middle" font-weight="900" fill="#1f7a3a">소주</text>
+        <rect x="10" y="110" width="40" height="40" rx="4" fill="#fff5d6"/><text x="30" y="136" font-size="15" text-anchor="middle" font-weight="900" fill="#1f7a3a">벌칙</text>
         <rect x="16" y="96" width="5" height="70" rx="2" fill="#fff" opacity=".25"/>
       </svg></div></div>`;
   }
@@ -48,26 +48,26 @@
   function markHit(el, gs) { el.querySelectorAll('.bseat').forEach(s => s.classList.toggle('hit', gs.phase === 'done' && s.dataset.id === gs.target)); }
 
   defineGame({
-    id: 'bottle', name: '술병 돌리기', emoji: '🍾', min: 2,
-    desc: '술병이 빙글빙글~ 멈춰서 가리킨 사람이 당첨',
+    id: 'bottle', name: '병 돌리기', emoji: '🌀', min: 2,
+    desc: '병이 빙글빙글~ 멈춰서 가리킨 사람이 당첨',
     init: () => ({ phase: 'ready', rot: 0, spin: null, target: null }),
-    controls(H) { return [{ label: '🍾 술병 돌리기!', primary: true, disabled: H.gs.phase === 'spinning', onClick: () => spin(H) }]; },
+    controls(H) { return [{ label: '🌀 병 돌리기!', primary: true, disabled: H.gs.phase === 'spinning', onClick: () => spin(H) }]; },
     hostView(H, el) {
       if (!el.querySelector('.bwheel')) el.innerHTML = `<div class="big-msg bmsg"></div>${wheel(H.seats(), H, 'min(78vh, 620px)')}`;
       const gs = H.gs;
-      el.querySelector('.bmsg').textContent = gs.phase === 'ready' ? '술병 돌리기! 를 누르세요' : gs.phase === 'spinning' ? '빙글빙글…' : `${H.label(gs.target)} 당첨! 🍺`;
+      el.querySelector('.bmsg').textContent = gs.phase === 'ready' ? '병 돌리기! 를 누르세요' : gs.phase === 'spinning' ? '빙글빙글…' : `${H.label(gs.target)} 당첨! 😱`;
       applySpin(el, H); markHit(el, gs);
     },
     playerView(P, el) {
       if (!el.querySelector('.bwheel')) el.innerHTML = wheel(P.gs.seats.map(id => ({ id, num: P.num(id), color: P.color(id) })), P, 'min(92vw, 70vh)');
       const gs = P.gs;
-      P.status(gs.phase === 'ready' ? '호스트가 술병을 돌리면 시작해요' : gs.phase === 'spinning' ? '빙글빙글… 제발 나만 아니길 🙏' : (P.isMe(gs.target) ? '술병이 나를 가리켰어요!' : `${P.label(gs.target)} 당첨!`));
+      P.status(gs.phase === 'ready' ? '호스트가 병을 돌리면 시작해요' : gs.phase === 'spinning' ? '빙글빙글… 제발 나만 아니길 🙏' : (P.isMe(gs.target) ? '병이 나를 가리켰어요!' : `${P.label(gs.target)} 당첨!`));
       applySpin(el, P); markHit(el, gs);
     },
     onEvent(ctx, m, el) {
       if (m.k !== 'result') return;
       const me = ctx.isMe(m.id);
-      U.banner(me ? '당신이 당첨!' : `${ctx.label(m.id)} 당첨!`, me ? '술병이 나를 가리켰어요 🍾' : '🍾 술병이 가리킨 사람', me ? 'me' : 'other');
+      U.banner(me ? '당신이 당첨!' : `${ctx.label(m.id)} 당첨!`, me ? '병이 나를 가리켰어요 🌀' : '🌀 병이 가리킨 사람', me ? 'me' : 'other');
     }
   });
 

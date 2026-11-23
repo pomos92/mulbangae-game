@@ -143,7 +143,7 @@
     $('hostjoin').classList.toggle('on', !!G.hostPlays);
 
     const d = G.game && GAMES[G.game];
-    $('gtitle').textContent = d ? `${d.emoji} ${d.name}` : '🍻 게임 고르기';
+    $('gtitle').textContent = d ? `${d.emoji} ${d.name}` : '🎉 게임 고르기';
     $('back').style.display = d ? '' : 'none';
     const stage = $('stage');
     const key = G.game ? G.game + ':' + G.round : 'menu';

@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setUserAgentString(s.getUserAgentString() + " MulbangaeApp/5");
+        s.setUserAgentString(s.getUserAgentString() + " MulbangaeApp/7");
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
     @Override
     public void onBackPressed() {
         new AlertDialog.Builder(this)
-                .setMessage("술게임 모임을 끝낼까요?")
+                .setMessage("파티게임 모임을 끝낼까요?")
                 .setPositiveButton("끝내기", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface d, int w) { finish(); }
                 })

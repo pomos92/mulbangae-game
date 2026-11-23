@@ -63,7 +63,7 @@
           <div class="cseat" data-id="${p.id}" style="--c:${p.color};animation-delay:${i * 0.12}s">${backs(gs.count || 1)}<span class="tag" style="--c:${p.color}">${H.label(p.id)}</span></div>`).join('')}</div>`;
         SFX.whoosh();
       }
-      el.querySelector('.cmsg').textContent = gs.phase === 'revealed' ? `${gs.losers.map(H.label).join(', ')} 당첨! 🍺` : gs.rule ? RULE[gs.rule] + ' — 확인을 누르세요' : '사람들에게 물어보세요: 낮은 수? 높은 수?';
+      el.querySelector('.cmsg').textContent = gs.phase === 'revealed' ? `${gs.losers.map(H.label).join(', ')} 당첨! 😱` : gs.rule ? RULE[gs.rule] + ' — 확인을 누르세요' : '사람들에게 물어보세요: 낮은 수? 높은 수?';
       if (gs.phase === 'revealed') showCards(el, gs);
     },
     playerView(P, el) {
@@ -81,7 +81,7 @@
         if (!box.dataset.v) { box.innerHTML = cardsHTML(c, { back: true, big: true, cls: lose ? 'lose' : '' }); box.dataset.v = 1; setTimeout(() => box.querySelectorAll('.pcard').forEach(x => x.classList.remove('back')), 50); }
         const cs = [].concat(c);
         el.querySelector('.chint').textContent = `내 카드: ${cs[0].v === 1 ? 'A(1)' : cs[0].v}`;
-        P.status(lose ? '내가 걸렸어요! 🍺' : '살았다! 😆');
+        P.status(lose ? '내가 걸렸어요! 😱' : '살았다! 😆');
       } else { P.status('카드를 받았어요. 확인 전까지는 뒤집혀 있어요'); el.querySelector('.chint').textContent = '🤫 확인을 누르면 모두 함께 뒤집혀요'; }
     },
     onEvent(ctx, m, el, isSeat) {

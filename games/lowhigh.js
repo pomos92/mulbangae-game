@@ -36,7 +36,7 @@
       const gs = H.gs;
       if (!el.querySelector('.lhboard')) el.innerHTML = '<div class="big-msg lhmsg"></div><div class="lhboard"></div><div class="seatgrid lhseats"></div>';
       el.querySelector('.lhmsg').textContent = gs.phase === 'pick' ? `각자 LOW / HIGH 중 하나를 몰래 고르세요 (${gs.picked.length}/${gs.seats.length})`
-        : gs.losers.length ? `${gs.losers.map(H.label).join(', ')} 당첨! 🍺` : '무승부! 같은 수예요. 새 판으로 다시!';
+        : gs.losers.length ? `${gs.losers.map(H.label).join(', ')} 당첨! 😱` : '무승부! 같은 수예요. 새 판으로 다시!';
       el.querySelector('.lhboard').innerHTML = gs.phase === 'revealed'
         ? `<div class="lhcount low ${gs.losers.length && gs.picks[gs.losers[0]] === 'low' ? 'lose' : ''}">⬇️ LOW <b>${gs.counts.low}</b></div><div class="lhcount high ${gs.losers.length && gs.picks[gs.losers[0]] === 'high' ? 'lose' : ''}">⬆️ HIGH <b>${gs.counts.high}</b></div>` : '';
       el.querySelector('.lhseats').innerHTML = H.seats().map(p => {
@@ -48,9 +48,9 @@
       const gs = P.gs, me = P.me.pid;
       const mineSel = gs.phase === 'revealed' ? (gs.picks[me] || null) : (el._sel && el._n === gs.n ? el._sel : null);
       if (el._n !== gs.n) { el._n = gs.n; el._sel = null; }
-      el.innerHTML = `<div class="big-msg">${gs.phase === 'pick' ? '한 장을 몰래 골라요 🤫' : gs.losers.length ? (gs.losers.includes(me) ? '내가 걸렸어요! 🍺' : '살았다! 😆') : '무승부! 다시!'}</div>
+      el.innerHTML = `<div class="big-msg">${gs.phase === 'pick' ? '한 장을 몰래 골라요 🤫' : gs.losers.length ? (gs.losers.includes(me) ? '내가 걸렸어요! 😱' : '살았다! 😆') : '무승부! 다시!'}</div>
         ${cardsHTML(mineSel, gs.phase !== 'pick')}
-        ${gs.phase === 'revealed' ? `<div class="big-msg">⬇️ LOW ${gs.counts.low}명 · ⬆️ HIGH ${gs.counts.high}명</div>` : '<div class="hint">공개 전까지는 바꿀 수 있어요. 적게 고른 쪽이 마셔요!</div>'}`;
+        ${gs.phase === 'revealed' ? `<div class="big-msg">⬇️ LOW ${gs.counts.low}명 · ⬆️ HIGH ${gs.counts.high}명</div>` : '<div class="hint">공개 전까지는 바꿀 수 있어요. 적게 고른 쪽이 벌칙!</div>'}`;
       el.querySelectorAll('.lhc').forEach(b => b.onclick = () => { el._sel = b.dataset.v; SFX.tick(); P.act({ k: 'pick', v: b.dataset.v }); el.querySelectorAll('.lhc').forEach(x => x.classList.toggle('on', x === b)); });
       P.status(gs.phase === 'pick' ? `${gs.picked.length}/${gs.seats.length}명 골랐어요` : '');
     },
@@ -66,7 +66,7 @@
       if (m.k !== 'reveal' || isSeat) return;
       const meId = ctx.isHost ? ctx.hostPid() : ctx.me.pid, me = m.losers.includes(meId);
       if (!m.losers.length) return U.banner('무승부!', `LOW ${m.counts.low} : HIGH ${m.counts.high} — 다시 해요`, 'info');
-      U.banner(me ? '당신이 당첨!' : `${m.losers.map(ctx.label).join(', ')} 당첨!`, `LOW ${m.counts.low}명 · HIGH ${m.counts.high}명 — 적게 고른 쪽이 마셔요`, me ? 'me' : 'other');
+      U.banner(me ? '당신이 당첨!' : `${m.losers.map(ctx.label).join(', ')} 당첨!`, `LOW ${m.counts.low}명 · HIGH ${m.counts.high}명 — 적게 고른 쪽이 벌칙`, me ? 'me' : 'other');
     }
   });
 })();

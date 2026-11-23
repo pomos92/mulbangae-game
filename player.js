@@ -40,7 +40,7 @@
       if (dead) return;
       const txt = buf.toString();
       if (topic === T + '/state') {
-        if (!txt) { if (joined) fatal('호스트가 방을 닫았어요. 고마워요! 🍻'); return; }
+        if (!txt) { if (joined) fatal('호스트가 방을 닫았어요. 고마워요! 🎉'); return; }
         try { onState(JSON.parse(txt)); } catch (e) { console.error(e); }
       } else if (topic === T + '/ev') {
         try { onEv(JSON.parse(txt)); } catch (e) { console.error(e); }
@@ -65,14 +65,14 @@
     if (!joined) { joined = true; SFX.tick(); }
     me.num = mine.num; me.color = mine.color;
     $('me').textContent = `${mine.num}번`; $('me').style.setProperty('--c', mine.color);
-    document.title = `${mine.num}번 · 술게임`;
+    document.title = `${mine.num}번 · 파티게임`;
     S = m;
     render();
   }
   function onEv(m) {
     if (m.type === 'rejected' && m.pid === me.pid && !joined) return fatal('참가 인원이 가득 찼어요.');
     if (m.type === 'kicked' && m.pid === me.pid) return fatal('호스트가 나를 뺐어요.');
-    if (m.type === 'ended') { if (joined) fatal('호스트가 방을 닫았어요. 고마워요! 🍻'); return; }
+    if (m.type === 'ended') { if (joined) fatal('호스트가 방을 닫았어요. 고마워요! 🎉'); return; }
     if (m.type === 'g' && S && S.game && joined) {
       const d = GAMES[S.game];
       if (d && d.onEvent && S.gs && S.gs.seats.includes(me.pid)) d.onEvent(P, m, $('stage'));
@@ -81,12 +81,12 @@
   function render() {
     if (!S || !joined) return;
     const d = S.game && GAMES[S.game];
-    $('gname').textContent = d ? `${d.emoji} ${d.name}` : '🍻 술게임 모임';
+    $('gname').textContent = d ? `${d.emoji} ${d.name}` : '🎉 파티게임 모임';
     const stage = $('stage');
     const key = d ? S.game + ':' + S.round : 'lobby';
     if (key !== stageKey) { U.resetEl(stage); stageKey = key; stage.className = 'g-' + (d ? S.game : 'lobby'); U.hideBanner(); SFX.stopMusic(); }
     if (!d) {
-      $('status').textContent = '참가 완료! 호스트가 게임을 고르는 중 🍻';
+      $('status').textContent = '참가 완료! 호스트가 게임을 고르는 중 🎉';
       if (!stage.querySelector('.lobbytub')) stage.innerHTML = `<div class="lobbytub water" style="--c:${me.color}"><span class="n">${me.num}</span><span class="t">번 자리 · 참가자 ${S.players.length}명</span></div>`;
       else stage.querySelector('.t').textContent = `번 자리 · 참가자 ${S.players.length}명`;
       if (window.ADS) ADS.mount(stage, 'join');

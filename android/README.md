@@ -1,4 +1,4 @@
-# 술게임 모임 안드로이드 앱 (AdMob 배너 포함)
+# 파티게임 모임 안드로이드 앱 (AdMob 배너 포함)
 
 https://maze.funnyqr.com/party/ 를 WebView로 열고, 화면 맨 아래에 AdMob 배너를 보여줘요.
 앱 안에서는 웹의 AdSense 광고가 나오지 않아요(ads.js가 WebView를 감지).
